@@ -89,6 +89,59 @@ void main() {
     }
   });
 
+  testWidgets('home lock quick actions confirm and warn without navigation', (
+    WidgetTester tester,
+  ) async {
+    final model = SmartBoxModel();
+    addTearDown(model.dispose);
+    tester.view.devicePixelRatio = 1;
+    tester.view.physicalSize = const Size(390, 844);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    addTearDown(tester.view.resetPhysicalSize);
+
+    await tester.pumpWidget(
+      SmartBoxScope(
+        model: model,
+        child: MaterialApp(home: HomeScreen(onSignOut: () {})),
+      ),
+    );
+
+    await tester.tap(find.text('Unlock'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Lock Control'), findsNothing);
+    expect(find.text('Unlock Box?'), findsOneWidget);
+    expect(model.isLocked, isTrue);
+
+    await tester.tap(find.text('Unlock').last);
+    await tester.pumpAndSettle();
+
+    expect(model.isLocked, isFalse);
+
+    await tester.pump(const Duration(seconds: 5));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Unlock'));
+    await tester.pump();
+
+    expect(find.text('Box is already unlocked'), findsOneWidget);
+    expect(find.text('Unlock Box?'), findsNothing);
+
+    await tester.pump(const Duration(seconds: 5));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Lock'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Lock Box?'), findsOneWidget);
+    expect(model.isLocked, isFalse);
+
+    await tester.tap(find.text('Lock').last);
+    await tester.pumpAndSettle();
+
+    expect(model.isLocked, isTrue);
+  });
+
   testWidgets(
     'primary screens avoid layout overflow at phone and tablet sizes',
     (WidgetTester tester) async {
@@ -247,6 +300,27 @@ void main() {
     expect(tester.takeException(), isNull);
     expect(find.text('Weight'), findsOneWidget);
     expect(find.text('2.4 kg'), findsOneWidget);
+  });
+
+  testWidgets('delivery history cards show concise delivery summary', (
+    WidgetTester tester,
+  ) async {
+    final model = SmartBoxModel();
+    addTearDown(model.dispose);
+
+    await tester.pumpWidget(
+      SmartBoxScope(
+        model: model,
+        child: const MaterialApp(home: DeliveryHistoryScreen()),
+      ),
+    );
+
+    expect(find.text('Delivered'), findsWidgets);
+    expect(find.text('May 24, 2026'), findsOneWidget);
+    expect(find.text('View more details'), findsNWidgets(3));
+    expect(find.byTooltip('Filter'), findsNothing);
+    expect(find.textContaining('kg'), findsNothing);
+    expect(find.textContaining('OTP used'), findsNothing);
   });
 
   testWidgets('does not sign in with empty credentials', (

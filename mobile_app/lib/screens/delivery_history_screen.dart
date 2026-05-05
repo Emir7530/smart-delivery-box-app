@@ -18,13 +18,6 @@ class DeliveryHistoryScreen extends StatelessWidget {
               bottomPadding: 7,
               iconSize: 24,
               titleFontSize: 20,
-              trailing: IconButton(
-                onPressed: () {},
-                icon: const Icon(Icons.tune_rounded),
-                color: Colors.white,
-                iconSize: 23,
-                tooltip: 'Filter',
-              ),
             ),
             Expanded(
               child: LayoutBuilder(

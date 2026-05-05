@@ -37,6 +37,24 @@ Future<void> showLockCommandDialog(
   );
 }
 
+Future<void> showQuickActionLockCommand(
+  BuildContext context,
+  SmartBoxModel model, {
+  required bool unlock,
+}) async {
+  if (unlock && !model.isLocked) {
+    showSnack(context, 'Box is already unlocked');
+    return;
+  }
+
+  if (!unlock && model.isLocked) {
+    showSnack(context, 'Box is already locked');
+    return;
+  }
+
+  await showLockCommandDialog(context, model);
+}
+
 class CommandConfirmCard extends StatelessWidget {
   const CommandConfirmCard({
     super.key,

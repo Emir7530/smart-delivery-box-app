@@ -135,17 +135,21 @@ class _HomeScreenState extends State<HomeScreen> {
                           iconAsset: 'assets/images/unlock-icon.png',
                           label: 'Unlock',
                           scale: scale,
-                          onTap: () =>
-                              openScreen(context, const LockControlScreen()),
+                          onTap: () => showQuickActionLockCommand(
+                            context,
+                            model,
+                            unlock: true,
+                          ),
                         ),
                         QuickActionTile(
                           iconAsset: 'assets/images/lock-icon.png',
                           label: 'Lock',
                           scale: scale,
-                          onTap: () {
-                            model.lock();
-                            showSnack(context, 'Box locked');
-                          },
+                          onTap: () => showQuickActionLockCommand(
+                            context,
+                            model,
+                            unlock: false,
+                          ),
                         ),
                         QuickActionTile(
                           iconAsset: 'assets/images/delivery-history-icon.png',

@@ -70,7 +70,7 @@ class DeliveryCard extends StatelessWidget {
                     ),
                     SizedBox(height: 8 * scale),
                     Text(
-                      delivery.deliveredAtLabel,
+                      delivery.date,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: TextStyle(
@@ -81,7 +81,7 @@ class DeliveryCard extends StatelessWidget {
                     ),
                     SizedBox(height: 8 * scale),
                     Text(
-                      '${delivery.weight} - ${delivery.note}',
+                      'View more details',
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: TextStyle(
