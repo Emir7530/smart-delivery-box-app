@@ -61,7 +61,19 @@ class OtpScreen extends StatelessWidget {
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        LockerHeroIllustration(size: 118 * scale),
+                        SizedBox(
+                          width: 132 * scale,
+                          height: 132 * scale,
+                          child: Image.asset(
+                            model.isLocked
+                                ? 'assets/images/case-locked.png'
+                                : 'assets/images/case-unlocked.png',
+                            fit: BoxFit.contain,
+                            semanticLabel: model.isLocked
+                                ? 'Locked drop-off case'
+                                : 'Unlocked drop-off case',
+                          ),
+                        ),
                         SizedBox(height: 16 * scale),
                         SmartCard(
                           padding: EdgeInsets.fromLTRB(

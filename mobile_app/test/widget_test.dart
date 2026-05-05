@@ -342,6 +342,23 @@ void main() {
     expect(find.text('Require OTP'), findsNothing);
   });
 
+  testWidgets('otp display uses shared case image', (
+    WidgetTester tester,
+  ) async {
+    final model = SmartBoxModel();
+    addTearDown(model.dispose);
+
+    await tester.pumpWidget(
+      SmartBoxScope(
+        model: model,
+        child: const MaterialApp(home: OtpScreen()),
+      ),
+    );
+
+    expect(find.bySemanticsLabel('Locked drop-off case'), findsOneWidget);
+    expect(find.text('Your OTP Code'), findsOneWidget);
+  });
+
   testWidgets('does not sign in with empty credentials', (
     WidgetTester tester,
   ) async {
