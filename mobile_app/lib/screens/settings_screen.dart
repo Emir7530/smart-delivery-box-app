@@ -9,8 +9,6 @@ class SettingsScreen extends StatefulWidget {
 
 class _SettingsScreenState extends State<SettingsScreen> {
   bool notifications = true;
-  bool autoLock = true;
-  bool otpRequired = true;
 
   @override
   Widget build(BuildContext context) {
@@ -62,8 +60,18 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                 padding: EdgeInsets.all(22 * scale),
                                 child: Row(
                                   children: [
-                                    LockerMiniIllustration(
-                                      size: illustrationSize,
+                                    SizedBox(
+                                      width: illustrationSize,
+                                      height: illustrationSize,
+                                      child: Image.asset(
+                                        model.isLocked
+                                            ? 'assets/images/case-locked.png'
+                                            : 'assets/images/case-unlocked.png',
+                                        fit: BoxFit.contain,
+                                        semanticLabel: model.isLocked
+                                            ? 'Locked drop-off case'
+                                            : 'Unlocked drop-off case',
+                                      ),
                                     ),
                                     SizedBox(width: 18 * scale),
                                     Expanded(
@@ -107,22 +115,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                 value: notifications,
                                 onChanged: (value) =>
                                     setState(() => notifications = value),
-                              ),
-                              SizedBox(height: 12 * scale),
-                              SettingsToggle(
-                                icon: Icons.lock_clock_outlined,
-                                label: 'Auto-lock after delivery',
-                                value: autoLock,
-                                onChanged: (value) =>
-                                    setState(() => autoLock = value),
-                              ),
-                              SizedBox(height: 12 * scale),
-                              SettingsToggle(
-                                icon: Icons.password_rounded,
-                                label: 'Require OTP',
-                                value: otpRequired,
-                                onChanged: (value) =>
-                                    setState(() => otpRequired = value),
                               ),
                             ],
                           ),

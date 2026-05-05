@@ -1,7 +1,7 @@
 part of '../app.dart';
 
 class SmartBoxModel extends ChangeNotifier {
-  static const int defaultBatteryPercent = 40;
+  static const int defaultBatteryPercent = 10;
 
   String userName = 'Emir';
   bool isLocked = true;

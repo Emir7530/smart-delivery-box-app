@@ -323,6 +323,25 @@ void main() {
     expect(find.textContaining('OTP used'), findsNothing);
   });
 
+  testWidgets('settings uses home lock art and only notification toggle', (
+    WidgetTester tester,
+  ) async {
+    final model = SmartBoxModel();
+    addTearDown(model.dispose);
+
+    await tester.pumpWidget(
+      SmartBoxScope(
+        model: model,
+        child: const MaterialApp(home: SettingsScreen()),
+      ),
+    );
+
+    expect(find.bySemanticsLabel('Locked drop-off case'), findsOneWidget);
+    expect(find.text('Security notifications'), findsOneWidget);
+    expect(find.text('Auto-lock after delivery'), findsNothing);
+    expect(find.text('Require OTP'), findsNothing);
+  });
+
   testWidgets('does not sign in with empty credentials', (
     WidgetTester tester,
   ) async {
