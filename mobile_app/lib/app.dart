@@ -1,7 +1,10 @@
+import 'dart:convert';
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:http/http.dart' as http;
+import 'package:shared_preferences/shared_preferences.dart';
 
 part 'theme/app_colors.dart';
 part 'utils/layout.dart';
@@ -32,12 +35,13 @@ part 'widgets/locker_illustrations.dart';
 part 'widgets/package_widgets.dart';
 part 'widgets/battery_widgets.dart';
 part 'utils/navigation.dart';
+part 'utils/api_client.dart';
 
 typedef SignInHandler =
-    String? Function({required String email, required String password});
+    Future<String?> Function({required String email, required String password});
 
 typedef RegisterHandler =
-    String? Function({
+    Future<String?> Function({
       required String fullName,
       required String email,
       required String phone,
@@ -46,38 +50,67 @@ typedef RegisterHandler =
     });
 
 class SmartDropOffApp extends StatefulWidget {
-  const SmartDropOffApp({super.key});
+  const SmartDropOffApp({super.key, this.apiClient});
+
+  final SmartBoxApiClient? apiClient;
 
   @override
   State<SmartDropOffApp> createState() => _SmartDropOffAppState();
 }
 
-class UserAccount {
-  const UserAccount({
-    required this.fullName,
-    required this.email,
-    required this.phone,
-    required this.password,
-  });
-
-  final String fullName;
-  final String email;
-  final String phone;
-  final String password;
-}
-
 class _SmartDropOffAppState extends State<SmartDropOffApp> {
+  static const _authTokenKey = 'smart_box_auth_token';
+
   final SmartBoxModel _model = SmartBoxModel();
-  final Map<String, UserAccount> _accountsByEmail = {};
+  late final SmartBoxApiClient _apiClient;
+  late final bool _ownsApiClient;
   bool _signedIn = false;
+  bool _bootstrappingSession = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _apiClient = widget.apiClient ?? SmartBoxApiClient();
+    _ownsApiClient = widget.apiClient == null;
+    _restoreSession();
+  }
 
   @override
   void dispose() {
+    if (_ownsApiClient) {
+      _apiClient.close();
+    }
     _model.dispose();
     super.dispose();
   }
 
-  String? _signIn({required String email, required String password}) {
+  Future<void> _restoreSession() async {
+    try {
+      final preferences = await SharedPreferences.getInstance();
+      final token = preferences.getString(_authTokenKey);
+      if (token == null || token.isEmpty) {
+        return;
+      }
+
+      final user = await _apiClient.me(token);
+      _model.setUserName(user.fullName);
+      if (mounted) {
+        setState(() => _signedIn = true);
+      }
+    } catch (_) {
+      final preferences = await SharedPreferences.getInstance();
+      await preferences.remove(_authTokenKey);
+    } finally {
+      if (mounted) {
+        setState(() => _bootstrappingSession = false);
+      }
+    }
+  }
+
+  Future<String?> _signIn({
+    required String email,
+    required String password,
+  }) async {
     final normalizedEmail = _normalizeEmail(email);
     final cleanPassword = password.trim();
 
@@ -85,23 +118,27 @@ class _SmartDropOffAppState extends State<SmartDropOffApp> {
       return 'Enter your email and password.';
     }
 
-    final account = _accountsByEmail[normalizedEmail];
-    if (account == null || account.password != cleanPassword) {
-      return 'No account matches those credentials.';
+    try {
+      final session = await _apiClient.login(
+        email: normalizedEmail,
+        password: cleanPassword,
+      );
+      await _completeSignIn(session);
+      return null;
+    } on SmartBoxApiException catch (error) {
+      return error.message;
+    } catch (_) {
+      return 'Could not reach the backend. Check that the server is running.';
     }
-
-    _model.setUserName(account.fullName);
-    setState(() => _signedIn = true);
-    return null;
   }
 
-  String? _register({
+  Future<String?> _register({
     required String fullName,
     required String email,
     required String phone,
     required String password,
     required String confirmPassword,
-  }) {
+  }) async {
     final cleanName = fullName.trim();
     final normalizedEmail = _normalizeEmail(email);
     final cleanPhone = phone.trim();
@@ -132,20 +169,30 @@ class _SmartDropOffAppState extends State<SmartDropOffApp> {
       return 'Passwords do not match.';
     }
 
-    if (_accountsByEmail.containsKey(normalizedEmail)) {
-      return 'An account with this email already exists.';
+    try {
+      final session = await _apiClient.register(
+        fullName: cleanName,
+        email: normalizedEmail,
+        phone: cleanPhone,
+        password: cleanPassword,
+        confirmPassword: cleanConfirmPassword,
+      );
+      await _completeSignIn(session);
+      return null;
+    } on SmartBoxApiException catch (error) {
+      return error.message;
+    } catch (_) {
+      return 'Could not reach the backend. Check that the server is running.';
     }
+  }
 
-    final account = UserAccount(
-      fullName: cleanName,
-      email: normalizedEmail,
-      phone: cleanPhone,
-      password: cleanPassword,
-    );
-    _accountsByEmail[normalizedEmail] = account;
-    _model.setUserName(account.fullName);
-    setState(() => _signedIn = true);
-    return null;
+  Future<void> _completeSignIn(AuthSession session) async {
+    final preferences = await SharedPreferences.getInstance();
+    await preferences.setString(_authTokenKey, session.token);
+    _model.setUserName(session.user.fullName);
+    if (mounted) {
+      setState(() => _signedIn = true);
+    }
   }
 
   String _normalizeEmail(String email) => email.trim().toLowerCase();
@@ -209,15 +256,31 @@ class _SmartDropOffAppState extends State<SmartDropOffApp> {
             ),
           ),
         ),
-        home: _signedIn
+        home: _bootstrappingSession
+            ? const _SessionLoadingScreen()
+            : _signedIn
             ? HomeScreen(
-                onSignOut: () {
+                onSignOut: () async {
+                  final preferences = await SharedPreferences.getInstance();
+                  await preferences.remove(_authTokenKey);
                   _model.reset();
                   setState(() => _signedIn = false);
                 },
               )
             : LoginScreen(onSignIn: _signIn, onRegister: _register),
       ),
+    );
+  }
+}
+
+class _SessionLoadingScreen extends StatelessWidget {
+  const _SessionLoadingScreen();
+
+  @override
+  Widget build(BuildContext context) {
+    return const Scaffold(
+      backgroundColor: Colors.white,
+      body: Center(child: CircularProgressIndicator(color: AppColors.navy)),
     );
   }
 }

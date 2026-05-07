@@ -17,6 +17,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
   final TextEditingController _confirmPasswordController =
       TextEditingController();
   String? _errorText;
+  bool _isSubmitting = false;
 
   @override
   void dispose() {
@@ -28,8 +29,17 @@ class _RegisterScreenState extends State<RegisterScreen> {
     super.dispose();
   }
 
-  void _submit() {
-    final error = widget.onRegister(
+  Future<void> _submit() async {
+    if (_isSubmitting) {
+      return;
+    }
+
+    setState(() {
+      _errorText = null;
+      _isSubmitting = true;
+    });
+
+    final error = await widget.onRegister(
       fullName: _nameController.text,
       email: _emailController.text,
       phone: _phoneController.text,
@@ -37,9 +47,14 @@ class _RegisterScreenState extends State<RegisterScreen> {
       confirmPassword: _confirmPasswordController.text,
     );
 
-    if (error != null && mounted) {
-      setState(() => _errorText = error);
+    if (!mounted) {
+      return;
     }
+
+    setState(() {
+      _errorText = error;
+      _isSubmitting = false;
+    });
   }
 
   @override
@@ -202,7 +217,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     PrimaryButton(
                       label: 'Create Account',
                       icon: Icons.person_add_alt_1_rounded,
-                      onPressed: _submit,
+                      onPressed: _isSubmitting ? null : _submit,
                       height: 58 * scale,
                       fontSize: 18 * scale,
                       iconSize: 22 * scale,

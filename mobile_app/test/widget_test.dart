@@ -1,9 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:smart_delivery_box_mobile/app.dart';
 
 void main() {
+  setUp(() {
+    SharedPreferences.setMockInitialValues({});
+  });
+
   test('low battery alert is conditional and pinned first', () {
     final model = SmartBoxModel();
     addTearDown(model.dispose);
@@ -56,6 +61,7 @@ void main() {
 
   testWidgets('shows the login screen', (WidgetTester tester) async {
     await tester.pumpWidget(const SmartDropOffApp());
+    await tester.pumpAndSettle();
 
     expect(find.text('SMART'), findsOneWidget);
     expect(find.text('Sign In'), findsOneWidget);
@@ -163,7 +169,7 @@ void main() {
           'LoginScreen',
           (model) => LoginScreen(
             onSignIn: ({required String email, required String password}) =>
-                null,
+                Future<String?>.value(),
             onRegister:
                 ({
                   required String fullName,
@@ -171,7 +177,7 @@ void main() {
                   required String phone,
                   required String password,
                   required String confirmPassword,
-                }) => null,
+                }) => Future<String?>.value(),
           ),
         ),
         MapEntry(
@@ -184,7 +190,7 @@ void main() {
                   required String phone,
                   required String password,
                   required String confirmPassword,
-                }) => null,
+                }) => Future<String?>.value(),
           ),
         ),
         MapEntry('HomeScreen', (model) => HomeScreen(onSignOut: () {})),
@@ -363,6 +369,7 @@ void main() {
     WidgetTester tester,
   ) async {
     await tester.pumpWidget(const SmartDropOffApp());
+    await tester.pumpAndSettle();
 
     await tester.tap(find.text('Sign In'));
     await tester.pump();
@@ -374,7 +381,8 @@ void main() {
   testWidgets('registers a user and greets them on the home screen', (
     WidgetTester tester,
   ) async {
-    await tester.pumpWidget(const SmartDropOffApp());
+    await tester.pumpWidget(SmartDropOffApp(apiClient: _FakeAuthApiClient()));
+    await tester.pumpAndSettle();
 
     await tester.tap(find.text('Create account'));
     await tester.pumpAndSettle();
@@ -397,6 +405,7 @@ void main() {
     WidgetTester tester,
   ) async {
     await tester.pumpWidget(const SmartDropOffApp());
+    await tester.pumpAndSettle();
 
     await tester.tap(find.text('Create account'));
     await tester.pumpAndSettle();
@@ -421,7 +430,8 @@ void main() {
   testWidgets('signs in with registered credentials after sign out', (
     WidgetTester tester,
   ) async {
-    await tester.pumpWidget(const SmartDropOffApp());
+    await tester.pumpWidget(SmartDropOffApp(apiClient: _FakeAuthApiClient()));
+    await tester.pumpAndSettle();
 
     await tester.tap(find.text('Create account'));
     await tester.pumpAndSettle();
@@ -450,4 +460,51 @@ void main() {
 
     expect(find.text('Hello, Grace'), findsOneWidget);
   });
+}
+
+class _FakeAuthApiClient extends SmartBoxApiClient {
+  final Map<String, ({String fullName, String password})> _accounts = {};
+
+  @override
+  Future<AuthSession> register({
+    required String fullName,
+    required String email,
+    required String phone,
+    required String password,
+    required String confirmPassword,
+  }) async {
+    final normalizedEmail = email.trim().toLowerCase();
+    _accounts[normalizedEmail] = (fullName: fullName, password: password);
+    return _session(fullName, normalizedEmail, phone);
+  }
+
+  @override
+  Future<AuthSession> login({
+    required String email,
+    required String password,
+  }) async {
+    final normalizedEmail = email.trim().toLowerCase();
+    final account = _accounts[normalizedEmail];
+    if (account == null || account.password != password) {
+      throw const SmartBoxApiException('No account matches those credentials.');
+    }
+    return _session(account.fullName, normalizedEmail, '05550102030');
+  }
+
+  @override
+  Future<UserProfile> me(String token) async {
+    throw const SmartBoxApiException('No saved test session.');
+  }
+
+  AuthSession _session(String fullName, String email, String phone) {
+    return AuthSession(
+      token: 'test-token-$email',
+      user: UserProfile(
+        id: 'test-user-$email',
+        fullName: fullName,
+        email: email,
+        phone: phone,
+      ),
+    );
+  }
 }

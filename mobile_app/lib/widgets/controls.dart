@@ -89,7 +89,7 @@ class PrimaryButton extends StatelessWidget {
   });
 
   final String label;
-  final VoidCallback onPressed;
+  final VoidCallback? onPressed;
   final IconData? icon;
   final double height;
   final double fontSize;
@@ -105,8 +105,10 @@ class PrimaryButton extends StatelessWidget {
         child: DecoratedBox(
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(10),
-            gradient: const LinearGradient(
-              colors: [AppColors.navy, AppColors.navyDark],
+            gradient: LinearGradient(
+              colors: onPressed == null
+                  ? const [AppColors.softMuted, AppColors.softMuted]
+                  : const [AppColors.navy, AppColors.navyDark],
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
             ),
