@@ -1,0 +1,45 @@
+{
+  "rules": {
+    ".read": false,
+    ".write": false,
+    "users": {
+      "$uid": {
+        ".read": "auth != null && auth.uid == $uid",
+        ".write": "auth != null && auth.uid == $uid"
+      }
+    },
+    "boxes": {
+      "$boxId": {
+        ".read": "auth != null && data.child('ownerUserId').val() == auth.uid",
+        ".write": "auth != null && data.child('ownerUserId').val() == auth.uid",
+        "commands": {
+          "$commandId": {
+            ".read": "auth != null && root.child('boxes').child($boxId).child('ownerUserId').val() == auth.uid",
+            ".write": "auth != null && root.child('boxes').child($boxId).child('ownerUserId').val() == auth.uid",
+            "status": {
+              ".write": "auth != null"
+            }
+          }
+        },
+        "deliveries": {
+          "$deliveryId": {
+            ".read": "auth != null && root.child('boxes').child($boxId).child('ownerUserId').val() == auth.uid",
+            ".write": "auth != null && root.child('boxes').child($boxId).child('ownerUserId').val() == auth.uid"
+          }
+        },
+        "alerts": {
+          "$alertId": {
+            ".read": "auth != null && root.child('boxes').child($boxId).child('ownerUserId').val() == auth.uid",
+            ".write": "auth != null && root.child('boxes').child($boxId).child('ownerUserId').val() == auth.uid"
+          }
+        },
+        "otps": {
+          "$otpId": {
+            ".read": "auth != null && root.child('boxes').child($boxId).child('ownerUserId').val() == auth.uid",
+            ".write": "auth != null && root.child('boxes').child($boxId).child('ownerUserId').val() == auth.uid"
+          }
+        }
+      }
+    }
+  }
+}
