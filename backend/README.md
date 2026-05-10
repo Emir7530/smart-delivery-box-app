@@ -1,25 +1,47 @@
 # Smart Drop-Off Box Backend
 
-This backend was added for the Flutter-only prototype in `mobile_app/`.
+This FastAPI backend supports the Flutter prototype in `mobile_app/`.
 It follows the project proposal flow: mobile app auth, box state, OTP,
 delivery history, security alerts, and ESP32 command/telemetry exchange.
 
 The proposal mentions Firebase Auth + Firebase Realtime Database. This local
-backend keeps the same concepts, but runs with only Python standard library so
-the team can test the mobile app and ESP32 flow before moving the schema to
-Firebase.
+backend keeps the same concepts with SQLite for now, so the team can test the
+mobile app and ESP32 flow before moving the schema to Firebase.
+
+## Structure
+
+```text
+backend/
+  app.py                  # FastAPI app, CORS, errors, health/index routes
+  config.py               # Environment-driven settings
+  db.py                   # SQLite connection, migrations, schema, seed data
+  auth/                   # Bearer token and auth dependencies
+  routes/                 # Thin HTTP route handlers
+  services/               # Business logic for OTPs, commands, telemetry, etc.
+  models/schemas.py       # Shared schema helpers
+```
 
 ## Run
+
+```bash
+cd backend
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+python app.py
+```
+
+You can also keep using the historical entrypoint:
 
 ```bash
 python backend/server.py
 ```
 
-On this WSL-based repo, the safest command is:
+Or run with Uvicorn directly:
 
 ```bash
-cd /home/masud/DropBox/smart-delivery-box-app
-python3 backend/server.py
+cd backend
+uvicorn app:app --host 127.0.0.1 --port 8080
 ```
 
 Defaults:
@@ -28,7 +50,7 @@ Defaults:
 - Demo account: `emir@example.com`
 - Demo password: `123456`
 - Demo box id: `box-demo-001`
-- ESP32 device key: `esp32-demo-key`
+- Demo ESP32 device key: `esp32-demo-key`
 - SQLite file: `backend/data/smart_box.sqlite3`
 
 Environment variables:
@@ -79,7 +101,10 @@ curl -X POST http://127.0.0.1:8080/api/boxes/box-demo-001/commands \
 
 ## ESP32 API
 
-Send `X-Device-Key: esp32-demo-key` from the embedded system.
+Send `X-Device-Key: esp32-demo-key` from the demo embedded system.
+Device keys are stored per box in the SQLite `device_keys` table as hashes.
+The `SMART_BOX_DEVICE_KEY` value is used to seed a demo key for existing boxes
+that do not already have one.
 
 ```http
 GET  /api/boxes/{boxId}/embedded/commands
@@ -107,6 +132,26 @@ curl -X POST http://127.0.0.1:8080/api/boxes/box-demo-001/embedded/delivery \
   -H "X-Device-Key: esp32-demo-key" \
   -d "{\"weightKg\":2.1,\"packageKind\":\"cardboard\",\"imageUrl\":\"https://example.com/delivery.jpg\"}"
 ```
+
+## Behavior Notes
+
+- ESP32 commands still use HTTP polling. The mobile app creates pending
+  commands, and the ESP32 fetches them from
+  `/api/boxes/{boxId}/embedded/commands`.
+- Lock state is updated only after the ESP32 confirms command completion via
+  `/api/boxes/{boxId}/embedded/commands/{commandId}/complete`; pending commands
+  do not optimistically change `box.isLocked`.
+- Login and embedded OTP verification have basic in-memory rate limits. These
+  limits reset when the backend process restarts.
+- SQLite data is persistent across restarts as long as
+  `backend/data/smart_box.sqlite3` or `SMART_BOX_DB` is preserved.
+- Server-sent events from `/api/boxes/{boxId}/events` use an in-memory
+  `EventHub`. Events are best-effort UI notifications and are lost when the
+  backend restarts; clients should refresh snapshots after reconnecting.
+- Device-key provisioning for newly registered boxes is intentionally minimal
+  for this prototype. New boxes are seeded with `SMART_BOX_DEVICE_KEY` in the
+  per-box `device_keys` table, but there is no mobile/admin API yet to rotate
+  or reveal keys.
 
 ## Firebase Mapping
 
